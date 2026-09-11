@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drachenmut — Tag &amp; Nacht Regler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=Raleway:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* DAY palette — warm parchment fairground */
+    --day-sky-1:#fdf1d2;
+    --day-sky-2:#f3d99a;
+    --day-sky-3:#e3b768;
+    --day-ink:#402c14;
+    --day-accent:#a8471f;
+    --day-gold:#b8801f;
+    --day-card:rgba(255,250,238,0.72);
+    --day-card-border:rgba(255,255,255,0.85);
+    --day-hill:#5c7a3a;
+    --day-hill-2:#3f5a28;
+
+    /* NIGHT palette — torch-lit metal stage */
+    --night-sky-1:#05030a;
+    --night-sky-2:#170a12;
+    --night-sky-3:#3a0d10;
+    --night-ink:#f3e3c2;
+    --night-gold:#f3c65e;
+    --night-ember:#ff5a2e;
+    --night-purple:#7b2ff7;
+    --night-card:rgba(18,10,12,0.68);
+    --night-card-border:rgba(243,198,94,0.25);
+    --night-castle:#0a0608;
+
+    --font-display:'Cinzel', Georgia, 'Times New Roman', serif;
+    --font-body:'Raleway', Verdana, sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{ height:100%; }
+
+  body{
+    margin:0;
+    font-family:var(--font-body);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow-x:hidden;
+    transition:background 0.6s ease, color 0.6s ease;
+    padding:120px 20px 220px;
+  }
+
+  body.day-theme{
+    background:linear-gradient(180deg, var(--day-sky-1) 0%, var(--day-sky-2) 55%, var(--day-sky-3) 100%);
+    color:var(--day-ink);
+  }
+
+  body.night-theme{
+    background:linear-gradient(180deg, var(--night-sky-1) 0%, var(--night-sky-2) 55%, var(--night-sky-3) 100%);
+    color:var(--night-ink);
+  }
+
+  /* ---------- Ambient scene layers ---------- */
+  .scene{
+    position:fixed;
+    inset:0;
+    z-index:-2;
+    pointer-events:none;
+    overflow:hidden;
+  }
+
+  /* sun / moon glow */
+  .sky-orb{
+    position:fixed;
+    top:8%;
+    left:50%;
+    transform:translateX(-50%);
+    width:220px;
+    height:220px;
+    border-radius:50%;
+    z-index:-2;
+    transition:background 0.6s ease, box-shadow 0.6s ease, opacity 0.6s ease, top 0.6s ease;
+  }
+  .day-theme .sky-orb{
+    background:radial-gradient(circle at 35% 30%, #fff7dd, #ffd873 55%, #f3b23a 100%);
+    box-shadow:0 0 120px 60px rgba(255, 205, 110, 0.55);
+    opacity:1;
+  }
+  .night-theme .sky-orb{
+    top:6%;
+    background:radial-gradient(circle at 35% 30%, #fff8ec, #e7dcc0 55%, #9c9578 100%);
+    box-shadow:0 0 90px 30px rgba(230, 220, 190, 0.25);
+    opacity:0.9;
+  }
+
+  /* stars, only visible at night */
+  .stars{
+    position:fixed;
+    inset:0;
+    z-index:-2;
+    opacity:0;
+    transition:opacity 0.8s ease;
+  }
+  .night-theme .stars{ opacity:1; }
+  .stars span{
+    position:absolute;
+    width:2px;
+    height:2px;
+    background:#f3e9cf;
+    border-radius:50%;
+    animation:twinkle 2.6s infinite ease-in-out;
+  }
+  @keyframes twinkle{
+    0%,100%{ opacity:0.2; }
+    50%{ opacity:1; }
+  }
+
+  /* castle / hill silhouette */
+  .horizon{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    height:34vh;
+    min-height:220px;
+    z-index:-1;
+    transition:filter 0.6s ease;
+  }
+  .horizon svg{ width:100%; height:100%; display:block; }
+  .day-theme .horizon .ground{ fill:var(--day-hill); }
+  .day-theme .horizon .ground-shadow{ fill:var(--day-hill-2); }
+  .day-theme .horizon .castle{ fill:#7a5a35; opacity:0.55; }
+  .night-theme .horizon .ground{ fill:var(--night-castle); }
+  .night-theme .horizon .ground-shadow{ fill:#000; }
+  .night-theme .horizon .castle{ fill:#050303; opacity:1; }
+  .horizon .window{ fill:var(--night-gold); opacity:0; transition:opacity 0.6s ease 0.2s; }
+  .night-theme .horizon .window{ opacity:0.9; }
+
+  /* fire glow behind stage at night */
+  .stage-glow{
+    position:fixed;
+    left:50%;
+    bottom:0;
+    transform:translateX(-50%);
+    width:120vw;
+    height:40vh;
+    background:radial-gradient(ellipse at center bottom, rgba(255,90,46,0.35), rgba(123,47,247,0.18) 45%, transparent 75%);
+    z-index:-1;
+    opacity:0;
+    transition:opacity 0.8s ease;
+  }
+  .night-theme .stage-glow{ opacity:1; }
+
+  /* floating embers (night) / petals (day) */
+  .particle{
+    position:fixed;
+    bottom:-20px;
+    border-radius:50%;
+    pointer-events:none;
+    z-index:-1;
+    opacity:0;
+    animation:float-up linear infinite;
+  }
+  .day-theme .particle.petal{
+    opacity:0.8;
+    background:radial-gradient(circle, #fff6da, #e9c877);
+    box-shadow:0 0 4px rgba(255,255,255,0.6);
+  }
+  .night-theme .particle.ember{
+    opacity:0.9;
+    background:radial-gradient(circle, #ffe0b0, #ff5a2e 70%, transparent);
+    box-shadow:0 0 8px 2px rgba(255,90,46,0.7);
+  }
+  @keyframes float-up{
+    0%{ transform:translateY(0) translateX(0); }
+    50%{ transform:translateY(-50vh) translateX(15px); }
+    100%{ transform:translateY(-100vh) translateX(-10px); }
+  }
+
+  /* ---------- Header / crest ---------- */
+  .site-header{
+    position:relative;
+    z-index:2;
+    text-align:center;
+    margin-bottom:2.2rem;
+  }
+
+  .crest{
+    width:130px;
+    height:130px;
+    margin:0 auto 0.6rem;
+    filter:drop-shadow(0 6px 16px rgba(0,0,0,0.45));
+    transition:filter 0.6s ease, opacity 0.6s ease;
+  }
+  .day-theme .crest{ filter:drop-shadow(0 6px 16px rgba(0,0,0,0.25)) brightness(1.05); }
+  .night-theme .crest{ filter:drop-shadow(0 0 26px rgba(243,198,94,0.5)); }
+
+  .brand-title{
+    font-family:var(--font-display);
+    font-size:clamp(2.2rem, 6vw, 3.4rem);
+    font-weight:900;
+    letter-spacing:0.12em;
+    margin:0;
+    line-height:1;
+  }
+  .day-theme .brand-title{
+    background:linear-gradient(180deg, #7a4a17, #a8471f);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .night-theme .brand-title{
+    background:linear-gradient(180deg, #ffe9b0, var(--night-gold) 60%, #b3821f);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    text-shadow:0 0 30px rgba(243,198,94,0.35);
+  }
+
+  .brand-tagline{
+    font-family:var(--font-body);
+    font-size:0.95rem;
+    font-weight:600;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    margin:0.5rem 0 0;
+    opacity:0.85;
+  }
+
+  .divider{
+    margin:0.9rem auto 0;
+    font-size:0.9rem;
+    letter-spacing:0.4em;
+    opacity:0.6;
+  }
+
+  /* ---------- Content card ---------- */
+  .content-box{
+    position:relative;
+    max-width:600px;
+    text-align:center;
+    padding:2.6rem 2.4rem;
+    border-radius:18px;
+    backdrop-filter:blur(8px);
+    box-shadow:0 16px 40px rgba(0,0,0,0.25);
+    transition:background 0.4s ease, border 0.4s ease;
+    z-index:2;
+  }
+
+  .day-theme .content-box{
+    background:var(--day-card);
+    border:2px solid var(--day-card-border);
+    outline:1px solid rgba(168,71,31,0.25);
+    outline-offset:6px;
+  }
+
+  .night-theme .content-box{
+    background:var(--night-card);
+    border:2px solid var(--night-card-border);
+    outline:1px solid rgba(243,198,94,0.15);
+    outline-offset:6px;
+  }
+
+  .content-box::before, .content-box::after,
+  .corner-tl, .corner-tr, .corner-bl, .corner-br{
+    content:'';
+  }
+  .corner-tl, .corner-tr, .corner-bl, .corner-br{
+    position:absolute;
+    font-size:1.3rem;
+    line-height:1;
+    opacity:0.8;
+  }
+  .corner-tl{ top:10px; left:14px; }
+  .corner-tr{ top:10px; right:14px; }
+  .corner-bl{ bottom:10px; left:14px; }
+  .corner-br{ bottom:10px; right:14px; }
+  .day-theme .corner-tl, .day-theme .corner-tr, .day-theme .corner-bl, .day-theme .corner-br{ color:var(--day-gold); }
+  .night-theme .corner-tl, .night-theme .corner-tr, .night-theme .corner-bl, .night-theme .corner-br{ color:var(--night-gold); }
+
+  .eyebrow{
+    font-family:var(--font-display);
+    font-size:0.78rem;
+    font-weight:700;
+    letter-spacing:0.22em;
+    margin:0 0 0.9rem;
+  }
+  .day-theme .eyebrow{ color:var(--day-accent); }
+  .night-theme .eyebrow{ color:var(--night-ember); }
+
+  #title{
+    font-family:var(--font-display);
+    font-size:clamp(1.5rem, 4vw, 2.1rem);
+    margin:0 0 1rem;
+    font-weight:700;
+  }
+
+  #text{
+    font-size:1rem;
+    line-height:1.65;
+    margin:0 0 1.4rem;
+    opacity:0.92;
+  }
+
+  .feature-row{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:0.6rem;
+    margin-bottom:1.4rem;
+  }
+  .feature-chip{
+    font-size:0.82rem;
+    font-weight:600;
+    padding:0.4rem 0.85rem;
+    border-radius:999px;
+    display:flex;
+    align-items:center;
+    gap:0.4rem;
+    white-space:nowrap;
+  }
+  .day-theme .feature-chip{
+    background:rgba(168,71,31,0.1);
+    border:1px solid rgba(168,71,31,0.35);
+    color:var(--day-ink);
+  }
+  .night-theme .feature-chip{
+    background:rgba(255,90,46,0.1);
+    border:1px solid rgba(255,90,46,0.35);
+    color:var(--night-ink);
+  }
+
+  .info-pill{
+    display:inline-block;
+    font-family:var(--font-display);
+    font-size:0.72rem;
+    font-weight:700;
+    letter-spacing:0.14em;
+    padding:0.5rem 1.2rem;
+    border-radius:999px;
+  }
+  .day-theme .info-pill{
+    background:rgba(184,128,31,0.12);
+    border:1px solid var(--day-gold);
+    color:var(--day-gold);
+  }
+  .night-theme .info-pill{
+    background:rgba(243,198,94,0.08);
+    border:1px solid var(--night-gold);
+    color:var(--night-gold);
+  }
+
+  /* torches beside card, night only */
+  .torch{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    font-size:2.1rem;
+    opacity:0;
+    transition:opacity 0.6s ease;
+    filter:drop-shadow(0 0 12px rgba(255,120,40,0.8));
+    animation:flicker 1.8s infinite ease-in-out;
+  }
+  .torch.left{ left:-70px; }
+  .torch.right{ right:-70px; }
+  .night-theme .torch{ opacity:1; }
+  @keyframes flicker{
+    0%,100%{ transform:translateY(-50%) scale(1) rotate(-2deg); }
+    50%{ transform:translateY(-52%) scale(1.08) rotate(2deg); }
+  }
+
+  /* pennants beside card, day only */
+  .pennant{
+    position:absolute;
+    top:-18px;
+    font-size:1.8rem;
+    opacity:0;
+    transition:opacity 0.6s ease;
+  }
+  .pennant.left{ left:14px; }
+  .pennant.right{ right:14px; }
+  .day-theme .pennant{ opacity:1; }
+
+  /* ---------- Controls ---------- */
+  .controls-wrapper{
+    position:fixed;
+    bottom:36px;
+    z-index:10000;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+
+  .status-badge{
+    font-family:var(--font-display);
+    background:rgba(10, 6, 4, 0.78);
+    color:#f3e9cf;
+    padding:6px 18px;
+    border-radius:20px;
+    font-size:0.78rem;
+    font-weight:700;
+    letter-spacing:0.08em;
+    backdrop-filter:blur(10px);
+    box-shadow:0 4px 16px rgba(0,0,0,0.3);
+    border:1px solid rgba(243,198,94,0.35);
+    transition:transform 0.1s ease;
+  }
+
+  .controls{
+    background:rgba(20, 12, 8, 0.35);
+    backdrop-filter:blur(15px);
+    padding:14px 28px;
+    border-radius:40px;
+    border:1px solid rgba(243,198,94,0.35);
+    box-shadow:0 8px 32px rgba(0, 0, 0, 0.3);
+    display:flex;
+    align-items:center;
+    gap:15px;
+  }
+  .day-theme .controls{
+    background:rgba(255, 250, 238, 0.35);
+    border:1px solid rgba(168,71,31,0.3);
+  }
+
+  .icon-label{
+    font-size:1.5rem;
+    user-select:none;
+  }
+
+  .target-pulse{
+    animation:pulse 1.5s infinite alternate ease-in-out;
+  }
+
+  @keyframes pulse{
+    0%{ transform:scale(1); filter:drop-shadow(0 0 2px rgba(255, 255, 255, 0.4)); }
+    100%{ transform:scale(1.25); filter:drop-shadow(0 0 10px #f3c65e); }
+  }
+
+  input[type="range"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:250px;
+    height:12px;
+    border-radius:6px;
+    background:linear-gradient(to right, #f3c65e, #a8471f 40%, #3a0d10 75%, #05030a);
+    outline:none;
+    cursor:pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    appearance:none;
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    background:#f3c65e;
+    box-shadow:0 0 10px rgba(243, 198, 94, 0.8);
+    cursor:grab;
+    transition:background-color 0.2s, box-shadow 0.2s;
+    border:2px solid #402c14;
+  }
+
+  input[type="range"]:active::-webkit-slider-thumb{
+    cursor:grabbing;
+    transform:scale(1.1);
+  }
+
+  input[type="range"]::-moz-range-thumb{
+    width:36px;
+    height:36px;
+    border:2px solid #402c14;
+    border-radius:50%;
+    background:#f3c65e;
+    box-shadow:0 0 10px rgba(243, 198, 94, 0.8);
+    cursor:grab;
+    transition:background-color 0.2s, box-shadow 0.2s;
+  }
+
+  .caption{
+    font-family:var(--font-body);
+    font-size:0.68rem;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    opacity:0.6;
+    text-align:center;
+  }
+
+  /* Abdunklungs-/Feuer-Overlay */
+  #dark-overlay{
+    position:fixed;
+    top:0;
+    left:0;
+    width:100vw;
+    height:100vh;
+    background:radial-gradient(ellipse at center, #2a0a08 0%, #05050a 75%);
+    opacity:0;
+    pointer-events:none;
+    z-index:9999;
+    transition:opacity 0.05s linear;
+  }
+
+  @media (max-width:480px){
+    .torch, .pennant{ display:none; }
+    .content-box{ padding:2rem 1.4rem; }
+  }
+</style>
+</head>
+<body class="day-theme">
+
+  <!-- Ambient scene -->
+  <div class="sky-orb"></div>
+  <div class="stars" id="stars"></div>
+  <div class="stage-glow"></div>
+  <div id="particles"></div>
+
+  <div class="horizon">
+    <svg viewBox="0 0 1200 300" preserveAspectRatio="none">
+      <path class="ground-shadow" d="M0,180 Q200,140 420,170 T900,150 T1200,190 L1200,300 L0,300 Z"/>
+      <path class="ground" d="M0,210 Q220,170 460,200 T940,180 T1200,220 L1200,300 L0,300 Z"/>
+      <!-- castle silhouette -->
+      <g class="castle" transform="translate(470,120)">
+        <rect x="0" y="60" width="260" height="70"/>
+        <rect x="20" y="30" width="30" height="40"/>
+        <rect x="90" y="10" width="40" height="60"/>
+        <rect x="170" y="30" width="30" height="40"/>
+        <rect x="215" y="45" width="30" height="25"/>
+        <polygon points="90,10 110,-15 130,10"/>
+        <rect x="15" y="22" width="8" height="8"/>
+        <rect x="45" y="22" width="8" height="8"/>
+        <rect x="167" y="22" width="8" height="8"/>
+        <rect x="195" y="22" width="8" height="8"/>
+      </g>
+      <rect class="window" x="580" y="150" width="10" height="14"/>
+      <rect class="window" x="605" y="160" width="10" height="14"/>
+      <rect class="window" x="640" y="150" width="10" height="14"/>
+    </svg>
+  </div>
+
+  <!-- Abdunklungs-Schicht -->
+  <div id="dark-overlay"></div>
+
+  <!-- Header / Crest -->
+  <div class="site-header">
+    <img class="crest" src="drachenmut-logo.svg" alt="Drachenmut Logo">
+    <h2 class="brand-title">DRACHENMUT</h2>
+    <p class="brand-tagline">Mittelalter-Festival für Familien &amp; Metal-Recken</p>
+    <div class="divider">⚜ ⚔ ⚜</div>
+  </div>
+
+  <!-- Inhaltsbereich -->
+  <div class="content-box" id="content-box">
+    <span class="corner-tl">❖</span>
+    <span class="corner-tr">❖</span>
+    <span class="corner-bl">❖</span>
+    <span class="corner-br">❖</span>
+
+    <span class="torch left">🔥</span>
+    <span class="torch right">🔥</span>
+    <span class="pennant left">🚩</span>
+    <span class="pennant right">🚩</span>
+
+    <p class="eyebrow" id="eyebrow">⚔ NACHMITTAGSPROGRAMM ⚔</p>
+    <h1 id="title">🛡️ Abenteuer für kleine Ritter</h1>
+    <p id="text">Wenn die Sonne hoch steht, verwandelt sich das Festivalgelände in ein Reich für mutige Familien: Schwerttraining, Bogenschießen und mittelalterliches Handwerk warten auf kleine und große Recken. Zieh den Regler nach rechts und lass die Sonne untergehen, damit die Nacht ihre eigenen Geheimnisse enthüllt.</p>
+
+    <div class="feature-row" id="feature-row">
+      <span class="feature-chip">🗡️ Schwerttraining</span>
+      <span class="feature-chip">🏹 Bogenschießen</span>
+      <span class="feature-chip">🔨 Handwerkskunst</span>
+    </div>
+
+    <span class="info-pill" id="info-pill">AB 14:00 UHR · FÜR DIE GANZE FAMILIE</span>
+  </div>
+
+  <!-- Steuerung mit dynamischem Status -->
+  <div class="controls-wrapper">
+    <div class="status-badge" id="status-badge">0% • Ziehe Richtung Abenddämmerung</div>
+
+    <div class="controls">
+      <span class="icon-label" id="left-icon">🛡️</span>
+      <input type="range" id="theme-slider" min="0" max="100" value="0">
+      <span class="icon-label target-pulse" id="right-icon">🐉</span>
+    </div>
+    <div class="caption">Tag der Familie ⇄ Nacht des Drachen</div>
+  </div>
+
+  <script>
+    const slider = document.getElementById('theme-slider');
+    const overlay = document.getElementById('dark-overlay');
+    const body = document.body;
+    const title = document.getElementById('title');
+    const text = document.getElementById('text');
+    const eyebrow = document.getElementById('eyebrow');
+    const featureRow = document.getElementById('feature-row');
+    const infoPill = document.getElementById('info-pill');
+    const statusBadge = document.getElementById('status-badge');
+    const rightIcon = document.getElementById('right-icon');
+    const leftIcon = document.getElementById('left-icon');
+    const starsEl = document.getElementById('stars');
+    const particlesEl = document.getElementById('particles');
+
+    let isDarkMode = false;
+
+    const CONTENT = {
+      day: {
+        eyebrow: '⚔ NACHMITTAGSPROGRAMM ⚔',
+        title: '🛡️ Abenteuer für kleine Ritter',
+        text: 'Wenn die Sonne hoch steht, verwandelt sich das Festivalgelände in ein Reich für mutige Familien: Schwerttraining, Bogenschießen und mittelalterliches Handwerk warten auf kleine und große Recken. Zieh den Regler nach rechts und lass die Sonne untergehen, damit die Nacht ihre eigenen Geheimnisse enthüllt.',
+        features: ['🗡️ Schwerttraining', '🏹 Bogenschießen', '🔨 Handwerkskunst'],
+        pill: 'AB 14:00 UHR · FÜR DIE GANZE FAMILIE'
+      },
+      night: {
+        eyebrow: '🔥 ABENDPROGRAMM 🔥',
+        title: '🐉 Medieval Metal Night',
+        text: 'Sobald die Sonne untergegangen ist, erwacht der Drache: Feuer lodert, die Bühne erbebt und Medieval-Metal-Bands entfesseln ihre Klingen aus Klang. Zieh den Regler zurück zur Sonne, um die Familienabenteuer des Tages wiederzuwecken.',
+        features: ['🎸 Live-Bands', '🔥 Feuershow', '🤘 Moshpit der Recken'],
+        pill: 'AB SONNENUNTERGANG · NUR FÜR MUTIGE'
+      }
+    };
+
+    // Sterne erzeugen
+    for (let i = 0; i < 60; i++) {
+      const s = document.createElement('span');
+      s.style.left = Math.random() * 100 + '%';
+      s.style.top = Math.random() * 70 + '%';
+      s.style.animationDelay = (Math.random() * 2.6) + 's';
+      starsEl.appendChild(s);
+    }
+
+    // Partikel erzeugen (Embers bei Nacht, Petals bei Tag) — beide vorhanden, CSS blendet passend ein
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('span');
+      const isEmber = i % 2 === 0;
+      p.className = 'particle ' + (isEmber ? 'ember' : 'petal');
+      const size = 3 + Math.random() * 5;
+      p.style.width = size + 'px';
+      p.style.height = size + 'px';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.animationDuration = (8 + Math.random() * 10) + 's';
+      p.style.animationDelay = (Math.random() * 10) + 's';
+      particlesEl.appendChild(p);
+    }
+
+    // Dynamischer Style für den Daumen-Knopf
+    const styleSheet = document.createElement("style");
+    document.head.appendChild(styleSheet);
+
+    function updateThumbGlow(progress) {
+      // Interpoliert zwischen Gold (Tag) und tiefem Glut-Rot (Nacht)
+      const r = Math.round(243 - (243 - 122) * progress);
+      const g = Math.round(198 - (198 - 30) * progress);
+      const b = Math.round(94 - (94 - 20) * progress);
+      const color = `rgb(${r}, ${g}, ${b})`;
+      const glow = progress > 0.5 ? 'rgba(255, 90, 46, 0.85)' : 'rgba(243, 198, 94, 0.85)';
+
+      styleSheet.innerText = `
+        input[type="range"]::-webkit-slider-thumb {
+          background: ${color} !important;
+          box-shadow: 0 0 14px ${glow} !important;
+        }
+        input[type="range"]::-moz-range-thumb {
+          background: ${color} !important;
+          box-shadow: 0 0 14px ${glow} !important;
+        }
+      `;
+    }
+
+    // Slider-Bewegung
+    slider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      const progress = val / 100;
+
+      updateThumbGlow(progress);
+
+      if (!isDarkMode) {
+        overlay.style.opacity = progress * 0.85;
+        statusBadge.textContent = `${val}% • Fackeln werden entzündet`;
+
+        if (val === 100) {
+          switchThemeToDark();
+        }
+      } else {
+        overlay.style.opacity = progress * 0.85;
+        statusBadge.textContent = `${100 - val}% • Die Sonne kehrt zurück`;
+
+        if (val === 0) {
+          switchThemeToLight();
+        }
+      }
+    });
+
+    // Snap-Back: Federt zurück, wenn vor dem Ziel losgelassen wird
+    slider.addEventListener('change', (e) => {
+      const val = parseInt(e.target.value);
+
+      if (!isDarkMode && val > 0 && val < 100) {
+        animateSliderReset(val, 0);
+      } else if (isDarkMode && val > 0 && val < 100) {
+        animateSliderReset(val, 100);
+      }
+    });
+
+    function animateSliderReset(fromVal, toVal) {
+      let current = fromVal;
+      const step = fromVal > toVal ? -5 : 5;
+
+      const interval = setInterval(() => {
+        current += step;
+        if ((step < 0 && current <= toVal) || (step > 0 && current >= toVal)) {
+          current = toVal;
+          clearInterval(interval);
+        }
+        slider.value = current;
+        overlay.style.opacity = (current / 100) * 0.85;
+        updateThumbGlow(current / 100);
+
+        const displayPercent = isDarkMode ? 100 - current : current;
+        const label = isDarkMode ? 'Die Sonne kehrt zurück' : 'Fackeln werden entzündet';
+        statusBadge.textContent = `${displayPercent}% • ${label}`;
+      }, 15);
+    }
+
+    function applyContent(mode) {
+      const c = CONTENT[mode];
+      eyebrow.textContent = c.eyebrow;
+      title.textContent = c.title;
+      text.textContent = c.text;
+      infoPill.textContent = c.pill;
+      featureRow.innerHTML = c.features.map(f => `<span class="feature-chip">${f}</span>`).join('');
+    }
+
+    function switchThemeToDark() {
+      isDarkMode = true;
+      body.className = 'night-theme';
+      applyContent('night');
+      statusBadge.textContent = '🔥 Die Nacht des Drachen ist erwacht';
+
+      rightIcon.classList.remove('target-pulse');
+      leftIcon.classList.add('target-pulse');
+
+      setTimeout(() => {
+        overlay.style.transition = 'opacity 0.4s ease';
+        overlay.style.opacity = 0;
+        setTimeout(() => {
+          overlay.style.transition = 'opacity 0.05s linear';
+        }, 400);
+      }, 50);
+    }
+
+    function switchThemeToLight() {
+      isDarkMode = false;
+      body.className = 'day-theme';
+      applyContent('day');
+      statusBadge.textContent = '☀️ Der Tag der Familie ist erwacht';
+
+      leftIcon.classList.remove('target-pulse');
+      rightIcon.classList.add('target-pulse');
+
+      setTimeout(() => {
+        overlay.style.transition = 'opacity 0.4s ease';
+        overlay.style.opacity = 0;
+        setTimeout(() => {
+          overlay.style.transition = 'opacity 0.05s linear';
+        }, 400);
+      }, 50);
+    }
+  </script>
+</body>
+</html>
